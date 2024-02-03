@@ -1,0 +1,8 @@
+To do
+- Organize code
+  - Consistency
+  - Less nesting
+- Clean up for following stages
+- Clear screen mechanism
+
+Done
