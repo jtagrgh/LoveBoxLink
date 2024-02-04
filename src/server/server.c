@@ -8,6 +8,8 @@
 #include <errno.h>
 #include "../shared/shared.h"
 
+
+
 #define PRINT_DEBUG 1
 
 #define ERR() do { \
@@ -23,8 +25,67 @@
   } \
 } while(0)
 
-#define MAX_CLIENTS 10
 
+
+int openServerFD(in_addr_t ip, in_port_t port);
+
+int runPollLoop(int serverFD, uint maxClients);
+
+void handleServerPollin(int serverFD, int maxClients, struct pollfd* pPollFDs, int* pNPollFDs);
+
+void handleClientPollin(int clientFD, struct pollfd* pPollFDs, int nPollFDs);
+
+void handleHangup(int fdIndex, struct pollfd* pPollFDs);
+
+
+
+int main() {
+  const int serverFD = openServerFD(inet_addr("192.168.1.198"), htons(5341));
+  const uint maxClients = 10;
+
+  runPollLoop(serverFD, maxClients);
+
+  close(serverFD);
+  return 0;
+}
+
+void handleHangup(int fdIndex, struct pollfd* pPollFDs) {
+  close(pPollFDs[fdIndex].fd);
+  pPollFDs[fdIndex].events = -1;
+  pPollFDs[fdIndex].fd = -1;
+}
+
+void handleServerPollin(int serverFD, int maxClients, struct pollfd* pPollFDs, int* pNPollFDs) {
+  if (*pNPollFDs == maxClients) {
+    DBG("Cannot accept new client, already at max.");
+    return;
+  }
+  const int newClientFD = accept(serverFD, NULL, NULL);
+  if (newClientFD == -1) { 
+    ERR(); 
+  }
+  pPollFDs[*pNPollFDs].fd = newClientFD;
+  pPollFDs[*pNPollFDs].events = POLLIN;
+  DBG("Accepted client FD %d", newClientFD);
+  (*pNPollFDs)++;
+}
+
+void handleClientPollin(int clientFD, struct pollfd* pPollFDs, int nPollFDs) {
+  struct Message recvMessageBuf;
+
+  recv(pPollFDs[clientFD].fd, &recvMessageBuf, messageSize, MSG_WAITALL);
+  DBG("Read from FD %d: x %d y %d colour %d\n", clientFD, recvMessageBuf.x, recvMessageBuf.y, recvMessageBuf.colour);
+
+  for (nfds_t j = 0; j < nPollFDs; j++) {
+    if (pPollFDs[j].fd == -1) {
+      continue;
+    }
+    recvMessageBuf.colour = 0x03E0;
+    recvMessageBuf.x += 10;
+    recvMessageBuf.y += 10;
+    write(pPollFDs[j].fd, (const void*)&recvMessageBuf, messageSize);
+  }
+}
 
 int openServerFD(in_addr_t ip, in_port_t port) {
   const int serverFD = socket(AF_INET, SOCK_STREAM, 0);
@@ -40,65 +101,33 @@ int openServerFD(in_addr_t ip, in_port_t port) {
     ERR(); 
   }
 
-
   return serverFD;
 }
 
-int runPollLoop(int serverFD) {
-  const struct pollfd serverPollSpec = {
-    .fd = serverFD, 
-    .events = POLLIN
-  };
-  struct pollfd pollFDs[MAX_CLIENTS + 1];
+int runPollLoop(int serverFD, uint maxClients) {
+  const struct pollfd howToPollServer = {.fd = serverFD, .events = POLLIN};
+  struct pollfd pollFDs[maxClients + 1];
   int nPollFDs = 1;
-  struct Message recvMessageBuf;
-  pollFDs[0] = serverPollSpec;
+  pollFDs[0] = howToPollServer;
 
   while (nPollFDs > 0) {
     const int pollReturned = poll(pollFDs, nPollFDs, -1);
 
-    if (pollReturned == 0) {
-      /* Poll timed out, i.e., no  subscribed events noticed */
-    }
-    else if (pollReturned < 0) {
+    if (pollReturned < 0) {
       ERR();
     } 
     else {
       for (nfds_t i = 0; i < nPollFDs; i++) {
-        const int rEvent = pollFDs[i].revents;
-        if (rEvent == 0) { /* No event on this FD */
-          /* Continue to next FD */
+        const int retEvent = pollFDs[i].revents;
+        if (retEvent & (POLLERR | POLLHUP)) {
+          handleHangup(i, pollFDs);
         }
-        else if (rEvent & (POLLERR | POLLHUP)) { /* Client errored or hung up */
-          /* Remove client from polling list */
-          close(pollFDs[i].fd);
-          pollFDs[i].events = -1;
-          pollFDs[i].fd = -1;
-        }
-        else if (rEvent & POLLIN) { /* Meaninful event recieved from client */
-          if (pollFDs[i].fd == serverFD) { /* Event comes from server FD */
-            /* Accept new client if possible */
-            int clientFD = accept(serverFD, NULL, NULL);
-            if (clientFD == -1) { 
-              ERR(); 
-            }
-            pollFDs[nPollFDs].fd = clientFD;
-            pollFDs[nPollFDs].events = POLLIN;
-            DBG("Accepted client FD %d", clientFD);
-            nPollFDs++;
+        else if (retEvent & POLLIN) {
+          if (pollFDs[i].fd == serverFD) {
+            handleServerPollin(serverFD, maxClients, pollFDs, &nPollFDs);
           }
           else { /* Event comes from a client */
-            recv(pollFDs[i].fd, &recvMessageBuf, sizeof(struct Message), MSG_WAITALL);
-            printf("Read from FD %d: x %d y %d colour %d\n", i, recvMessageBuf.x, recvMessageBuf.y, recvMessageBuf.colour);
-            for (nfds_t j = 0; j < nPollFDs; j++) {
-              if (pollFDs[j].fd == -1) {
-                continue;
-              }
-              recvMessageBuf.colour = 0x03E0;
-              recvMessageBuf.x += 10;
-              recvMessageBuf.y += 10;
-              write(pollFDs[j].fd, (const void*)&recvMessageBuf, messageSize);
-            }
+            handleClientPollin(i, pollFDs, nPollFDs);
           }
         }
       }
@@ -108,12 +137,4 @@ int runPollLoop(int serverFD) {
   return 0;
 }
 
-int main() {
-  const int serverFD = openServerFD(inet_addr("192.168.1.198"), htons(5341));
-  DBG("Server started");
-  runPollLoop(serverFD);
-
-  close(serverFD);
-  return 0;
-}
 
