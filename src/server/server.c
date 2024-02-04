@@ -119,6 +119,7 @@ int runPollLoop(int serverFD, uint maxClients) {
     else {
       for (nfds_t i = 0; i < nPollFDs; i++) {
         const int retEvent = pollFDs[i].revents;
+        
         if (retEvent & (POLLERR | POLLHUP)) {
           handleHangup(i, pollFDs);
         }
@@ -126,7 +127,7 @@ int runPollLoop(int serverFD, uint maxClients) {
           if (pollFDs[i].fd == serverFD) {
             handleServerPollin(serverFD, maxClients, pollFDs, &nPollFDs);
           }
-          else { /* Event comes from a client */
+          else {
             handleClientPollin(i, pollFDs, nPollFDs);
           }
         }
