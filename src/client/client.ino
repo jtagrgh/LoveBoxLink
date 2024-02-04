@@ -29,8 +29,8 @@ void setup() {
   Serial.print("Attempting to connect to network SSID:");
   Serial.println(SECRET_SSID);
   while (WiFi.begin(SECRET_SSID, SECRET_PASS) != WL_CONNECTED) {
-    Serial.println("Failed to connect. Waiting 10s and trying again");
-    delay(10000);
+    Serial.println("Failed to connect. Waiting 1s and trying again");
+    delay(1000);
   }
 
   // Touch screen setup
