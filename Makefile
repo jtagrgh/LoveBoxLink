@@ -1,3 +1,6 @@
+$(shell test -d obj || mkdir obj)
+$(shell test -d bin || mkdir bin)
+
 CXXFLAGS += -std=c++17
 
 core_modules := Message PixelBroadcastMessage SerialData Shared
