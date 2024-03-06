@@ -1,11 +1,6 @@
-#include <stdint.h>
+#pragma once
 
-/* Shared structure */
-struct Message {
-	uint16_t x;
-	uint16_t y;
-	uint16_t colour;
-};
+#include <stdint.h>
 
 extern const int messageSize;
 

@@ -1,3 +1,5 @@
 secrets.h
 .vscode
 .DS_store
+obj/
+bin/
