@@ -47,11 +47,20 @@ void handlePixelBroadcast(int serverFD, int fdIndex, struct pollfd *pPollFDs, in
 
 void handleHangup(int fdIndex, struct pollfd *pPollFDs);
 
-int main()
+int main(int argc, char* argv[])
 {
-    const int serverFD = openServerFD(inet_addr("192.168.120.38"), htons(5341));
+    if (argc < 2)
+    {
+        DBG("Not enough arguments. Arguments should be: serverIP");
+        return 1;
+    }
+
+    const char *serverIP = argv[1];
+
+    const int serverFD = openServerFD(inet_addr(serverIP), htons(5341));
     const uint maxClients = 10;
 
+    DBG("Starting polling");
     runPollLoop(serverFD, maxClients);
 
     close(serverFD);
