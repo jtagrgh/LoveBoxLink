@@ -271,16 +271,19 @@ Menu drawMenuLoop()
 
     size_t nColourButtons = 4;
     Adafruit_GFX_Button colourButtons[nColourButtons];
+
     unsigned buttonColours[nColourButtons] = {
         ILI9341_RED,
         ILI9341_GREEN,
         ILI9341_BLUE,
-        ILI9341_PINK};
+        ILI9341_PINK
+    };
+
     for (int i = 0; i < nColourButtons; i++)
     {
         colourButtons[i].initButton(
             &tft,
-            tft.width() / (nColourButtons + 1) * (i + 1),
+            tft.width() / (nColourButtons + 2) * (i + 1),
             20,
             20,
             20,
@@ -292,56 +295,83 @@ Menu drawMenuLoop()
         colourButtons[i].drawButton();
     }
 
+    Adafruit_GFX_Button clearButton;
+    clearButton.initButton(
+        &tft,
+        tft.width() / (nColourButtons + 2) * (nColourButtons + 1),
+        20,
+        20,
+        20,
+        ILI9341_DARKGREY,
+        ILI9341_DARKGREY,
+        ILI9341_RED,
+        "x",
+        1);
+    clearButton.drawButton();
+
     Menu currentMenu = DRAW_MENU;
     SerialData recvMessageData;
     unsigned currentColour = buttonColours[0];
     while (currentMenu == DRAW_MENU)
     {
         const TouchQuery touchQuery(ts, ts_min_pressure);
+        const unsigned touchX = screenXMapper.map((unsigned)touchQuery.getX());
+        const unsigned touchY = screenYMapper.map((unsigned)touchQuery.getY());
+
+        bool noButtonsPressed = true;
 
         for (int i = 0; i < nColourButtons; i++)
         {
-            if (colourButtons[i].justReleased())
+            colourButtons[i].press(
+                touchQuery.getPressed() &&
+                colourButtons[i].contains(touchX, touchY));
+
+            if (colourButtons[i].isPressed())
+            {
+                noButtonsPressed = false;
+            }
+
+            if (colourButtons[i].justPressed())
+            {
+                colourButtons[i].drawButton(true);
+            }
+            else if (colourButtons[i].justReleased())
             {
                 colourButtons[i].drawButton();
                 currentColour = buttonColours[i];
             }
         }
 
-        if (touchQuery.getPressed())
+        clearButton.press(
+            touchQuery.getPressed() &&
+            clearButton.contains(touchX, touchY));
+
+        if (clearButton.isPressed())
         {
-            const unsigned touchX = screenXMapper.map((unsigned)touchQuery.getX());
-            const unsigned touchY = screenYMapper.map((unsigned)touchQuery.getY());
+            noButtonsPressed = false;
+        }
 
-            bool noButtonsPressed = true;
+        if (clearButton.justPressed())
+        {
+            clearButton.drawButton(true);
+        }
+        else if (clearButton.justReleased())
+        {
+            currentMenu = DRAW_MENU;
+            clearButton.drawButton();
+            break;
+        }
 
-            for (int i = 0; i < nColourButtons; i++)
+        const bool touchedDrawingArea = touchQuery.getPressed() && noButtonsPressed;
+
+        if (touchedDrawingArea)
+        {
+            tft.fillRect(touchX, touchY, 3, 3, currentColour);
+            const PixelBroadcastMessage sendPixel(touchX, touchY, currentColour);
+            const SerialData sendMessageData = sendPixel.serialize();
+            for (uint8_t byte : sendMessageData)
             {
-                colourButtons[i].press(
-                    colourButtons[i].contains(touchX, touchY));
-
-                if (colourButtons[i].isPressed())
-                {
-                    noButtonsPressed = false;
-                }
-
-                if (colourButtons[i].justPressed())
-                {
-                    colourButtons[i].drawButton(true);
-                }
-            }
-
-            const bool touchedDrawingArea = noButtonsPressed;
-
-            if (touchedDrawingArea)
-            {
-                tft.fillRect(touchX, touchY, 3, 3, currentColour);
-                const PixelBroadcastMessage sendPixel(touchX, touchY, currentColour);
-                const SerialData sendMessageData = sendPixel.serialize();
-                for (uint8_t byte : sendMessageData)
-                {
-                    client.write(byte);
-                }
+                client.write(byte);
             }
         }
 

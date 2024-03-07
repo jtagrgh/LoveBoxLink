@@ -49,16 +49,16 @@ void handleHangup(int fdIndex, struct pollfd *pPollFDs);
 
 int main(int argc, char* argv[])
 {
-    if (argc < 3)
+    if (argc < 2)
     {
-        DBG("Not enough arguments. Arguments should be: ip port");
+        DBG("Not enough arguments. Arguments should be: IP");
         return 1;
     }
 
     const char *serverIP = argv[1];
 
     const int serverFD = openServerFD(inet_addr(serverIP), htons(5341));
-    const uint maxClients = 10;
+    const uint maxClients = 1000;
 
     DBG("Starting polling");
     runPollLoop(serverFD, maxClients);
