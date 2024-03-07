@@ -49,9 +49,9 @@ void handleHangup(int fdIndex, struct pollfd *pPollFDs);
 
 int main(int argc, char* argv[])
 {
-    if (argc < 2)
+    if (argc < 3)
     {
-        DBG("Not enough arguments. Arguments should be: serverIP");
+        DBG("Not enough arguments. Arguments should be: ip port");
         return 1;
     }
 
@@ -101,14 +101,8 @@ void handlePixelBroadcast(int serverFD, int fdIndex, struct pollfd *pPollFDs, in
         return recvPixel;
     }();
 
-    DBG("recvMessageData: %s", recvMessageData.toString().c_str());
-
     const PixelBroadcastMessage sendPixel = recvPixel;
     const SerialData sendPixelData = sendPixel.serialize();
-
-    DBG("sendPixelData: %s", sendPixelData.toString().c_str());
-
-    printf("\n");
 
     for (nfds_t i = 0; i < nPollFDs; i++)
     {
