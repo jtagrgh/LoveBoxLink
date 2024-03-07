@@ -41,7 +41,7 @@ Server: $(server_objects_paths) $(core_objects_paths)
 Client:
 	arduino-cli compile \
 		--fqbn arduino:renesas_uno:unor4wifi \
-		--library "src/Message","src/PixelBroadcastMessage","src/SerialData","src/Shared","assets/" \
+		--library "src/Message","src/PixelBroadcastMessage","src/SerialData","src/Shared" \
 		src/client/client.ino
 
 clean:
