@@ -13,7 +13,7 @@ vpath %.hpp $(core_modules_paths)
 vpath %.cpp $(core_modules_paths)
 -include $(core_objects_paths:.o=.d)
 
-test_modules := Tester Test TestSerialData
+test_modules := Tester Test TestSerialData TestPixelBroadcastMessage
 test_modules_paths := $(addprefix tests/, $(test_modules))
 test_include := $(addprefix -I, $(test_modules_paths))
 test_objects := $(addsuffix .o, $(test_modules))
