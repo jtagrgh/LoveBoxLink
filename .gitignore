@@ -1,4 +1,5 @@
 secrets.h
+scripts/upload.sh
 .vscode
 .DS_Store
 obj/

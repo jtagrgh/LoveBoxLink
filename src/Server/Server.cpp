@@ -51,14 +51,14 @@ int main(int argc, char* argv[])
 {
     if (argc < 2)
     {
-        DBG("Not enough arguments. Arguments should be: serverIP");
+        DBG("Not enough arguments. Arguments should be: IP");
         return 1;
     }
 
     const char *serverIP = argv[1];
 
     const int serverFD = openServerFD(inet_addr(serverIP), htons(5341));
-    const uint maxClients = 10;
+    const uint maxClients = 1000;
 
     DBG("Starting polling");
     runPollLoop(serverFD, maxClients);
@@ -101,14 +101,8 @@ void handlePixelBroadcast(int serverFD, int fdIndex, struct pollfd *pPollFDs, in
         return recvPixel;
     }();
 
-    DBG("recvMessageData: %s", recvMessageData.toString().c_str());
-
     const PixelBroadcastMessage sendPixel = recvPixel;
     const SerialData sendPixelData = sendPixel.serialize();
-
-    DBG("sendPixelData: %s", sendPixelData.toString().c_str());
-
-    printf("\n");
 
     for (nfds_t i = 0; i < nPollFDs; i++)
     {
