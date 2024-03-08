@@ -22,7 +22,18 @@ struct Message
     SerialData serialize() const;
     static Info deserialize(SerialData);
 
+    template <typename MessageType>
+    static MessageType construct(const SerialData&);
+
     virtual SerialData serializeData() const = 0;
     virtual void init(SerialData) = 0;
     virtual Type getType() const = 0;
 };
+
+template <typename MessageType>
+MessageType Message::construct(const SerialData& serialData)
+{
+    MessageType msg;
+    msg.init(serialData);
+    return msg;
+}
